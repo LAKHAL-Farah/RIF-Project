@@ -1,0 +1,21 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: demande-service
+  data:
+    mongodb:
+      uri: "mongodb://${MONGO_HOST:mongodb}:27017/demande_db"
+
+application:
+  security:
+    jwt:
+      secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOST:eureka-server}:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true

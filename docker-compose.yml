@@ -1,0 +1,191 @@
+name: dakarcitoyen
+
+networks:
+  dakar-net:
+    driver: bridge
+
+volumes:
+  mongo-data:
+
+services:
+
+  # ---------------------------------------------------------------------
+  # Shared MongoDB instance (used by user-service and demande-service,
+  # each writes to its own database: "user" and "demande_db")
+  # ---------------------------------------------------------------------
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - dakar-net
+
+  # ---------------------------------------------------------------------
+  # Spring Cloud Config Server -- must be first, everything else reads
+  # its runtime config from here (native profile, files under
+  # config-server/src/main/resources/configurations/*.yml)
+  # ---------------------------------------------------------------------
+  config-server:
+    build:
+      context: ./backend-microservices/config-server
+    container_name: config-server
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8888"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - dakar-net
+
+  # ---------------------------------------------------------------------
+  # Eureka service registry -- everything else registers with it
+  # ---------------------------------------------------------------------
+  eureka-server:
+    build:
+      context: ./backend-microservices/eureka-server
+    container_name: eureka-server
+    restart: unless-stopped
+    environment:
+      CONFIG_HOST: config-server
+    depends_on:
+      config-server:
+        condition: service_healthy
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8761/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - dakar-net
+
+  # ---------------------------------------------------------------------
+  # user-service: auth + user management, backed by MongoDB "user" db
+  # ---------------------------------------------------------------------
+  user-service:
+    build:
+      context: ./backend-microservices/user-microservice
+    container_name: user-service
+    restart: unless-stopped
+    environment:
+      CONFIG_HOST: config-server
+      EUREKA_HOST: eureka-server
+      MONGO_HOST: mongodb
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/user
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_APPLICATION_JSON: '{"spring":{"data":{"mongodb":{"uri":"mongodb://mongodb:27017/user"}}},"eureka":{"client":{"service-url":{"defaultZone":"http://eureka-server:8761/eureka/"}}}}'
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8081"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - dakar-net
+
+  # ---------------------------------------------------------------------
+  # demande-service: citizen requests, backed by MongoDB "demande_db"
+  # ---------------------------------------------------------------------
+  demande-service:
+    build:
+      context: ./backend-microservices/demande-microservice
+    container_name: demande-service
+    restart: unless-stopped
+    environment:
+      CONFIG_HOST: config-server
+      EUREKA_HOST: eureka-server
+      MONGO_HOST: mongodb
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/demande_db
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_APPLICATION_JSON: '{"spring":{"data":{"mongodb":{"uri":"mongodb://mongodb:27017/demande_db"}}},"eureka":{"client":{"service-url":{"defaultZone":"http://eureka-server:8761/eureka/"}}}}'
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8082"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - dakar-net
+
+  # ---------------------------------------------------------------------
+  # api-gateway: single entry point, routes /auth,/users -> user-service
+  # and /demandes -> demande-service via Eureka load-balancing (lb://)
+  # ---------------------------------------------------------------------
+  api-gateway:
+    build:
+      context: ./backend-microservices/api-gateway
+    container_name: api-gateway
+    restart: unless-stopped
+    environment:
+      CONFIG_HOST: config-server
+      EUREKA_HOST: eureka-server
+      APP_CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      demande-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8090"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - dakar-net
+
+  # ---------------------------------------------------------------------
+  # frontend: static React/Vite build served by nginx.
+  # Talks to the gateway via the HOST-published port (browser-side calls),
+  # not the internal docker network name.
+  # ---------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend
+    restart: unless-stopped
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    networks:
+      - dakar-net
