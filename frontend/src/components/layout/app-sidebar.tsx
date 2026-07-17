@@ -10,38 +10,12 @@ import { NavGroup } from '@/components/layout/nav-group';
 import { NavUser } from '@/components/layout/nav-user';
 import { sidebarData } from './data/sidebar-data';
 import { useAuthStore } from '@/stores/authStore';
-import { useEffect } from 'react';
-import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import './app-sidebar.css';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, setUser } = useAuthStore((s) => s.auth); // Destructure user and setUser
+  const { user } = useAuthStore((s) => s.auth); // user is populated at login from the JWT
   const { state } = useSidebar(); // Get sidebar state for responsive logo
-
-  useEffect(() => {
-    const fetchUserRole = async () => {
-      try {
-        const response = await api.get('/api/account');
-        const userData = response.data as any;
-        const role = Array.isArray(userData?.authorities) ? userData.authorities : [];
-        setUser({
-          accountNo: userData?.login ?? '',
-          email: userData?.details?.email ?? userData?.email ?? '',
-          firstName: userData?.details?.firstName ?? userData?.firstName ?? '',
-          lastName: userData?.details?.lastName ?? userData?.lastName ?? '',
-          role: role,
-          exp: 0,
-        });
-        console.log('User role:', role);
-        console.log('Sidebar data:', sidebarData);
-      } catch (error) {
-        console.error('Failed to fetch user role:', error);
-      }
-    };
-
-    fetchUserRole();
-  }, [setUser]);
 
   // Filter navGroups to exclude "Utilisateurs" if role does not include ROLE_ADMIN
   const filteredNavGroups = sidebarData.navGroups.map((group) => {

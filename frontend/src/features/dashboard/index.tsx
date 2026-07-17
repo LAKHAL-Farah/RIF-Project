@@ -21,7 +21,7 @@ import { useAuthStore } from '@/stores/authStore'
 function UserDashboard() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.auth.user)
-  const { data } = useQuery({
+  const { data, error, isLoading } = useQuery({
     queryKey: ['requests', 'mine', user?.accountNo],
     queryFn: async () => {
       if (!user?.accountNo) return []
@@ -32,8 +32,8 @@ function UserDashboard() {
         type: r.type,
         description: r.description,
         status: r.status,
-        createdAt: r.createdDate ? new Date(r.createdDate) : new Date(),
-        updatedAt: r.resolvedDate ? new Date(r.resolvedDate) : new Date(),
+        createdAt: r.createdDate ?? (r as any).createdAt ? new Date(r.createdDate ?? (r as any).createdAt) : new Date(),
+        updatedAt: r.resolvedDate ?? (r as any).updatedAt ? new Date(r.resolvedDate ?? (r as any).updatedAt) : new Date(),
       }))
       const parsed = requestListSchema.safeParse(mapped)
       const result = parsed.success ? parsed.data : mapped
@@ -86,6 +86,17 @@ function UserDashboard() {
             <CardDescription>Suivez l'état de vos demandes et consultez leur progression</CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-red-800">Erreur de connexion: {error.message}</p>
+                <p className="text-sm text-red-600">Vérifiez que le backend est en cours d'exécution.</p>
+              </div>
+            )}
+            {isLoading && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-blue-800">Chargement des données...</p>
+              </div>
+            )}
             <RequestsTable 
               key="user-requests-table"
               data={data ?? []} 
@@ -112,8 +123,8 @@ function AgentDashboard() {
           type: r.type,
           description: r.description,
           status: r.status,
-          createdAt: r.createdDate ? new Date(r.createdDate) : new Date(),
-          updatedAt: r.resolvedDate ? new Date(r.resolvedDate) : new Date(),
+          createdAt: r.createdDate ?? (r as any).createdAt ? new Date(r.createdDate ?? (r as any).createdAt) : new Date(),
+          updatedAt: r.resolvedDate ?? (r as any).updatedAt ? new Date(r.resolvedDate ?? (r as any).updatedAt) : new Date(),
           citizenFirstName: r.citizenFirstName,
           citizenLastName: r.citizenLastName,
           citizenEmail: r.citizenEmail,

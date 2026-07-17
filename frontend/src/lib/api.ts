@@ -54,21 +54,13 @@ export interface RequestDTO {
 }
 
 export async function fetchRequests(): Promise<RequestDTO[]> {
-  try {
-    const response = await api.get('/demandes')
-    return response.data
-  } catch (e) {
-    return Promise.resolve(mockRequests)
-  }
+  const response = await api.get('/demandes')
+  return response.data
 }
 
 export async function fetchMyRequests(userId: string): Promise<RequestDTO[]> {
-  try {
-    const response = await api.get(`/demandes/my/${userId}`)
-    return response.data
-  } catch (e) {
-    return Promise.resolve(mockRequests.filter(r => r.citizenId === 3 || r.citizenId === 4))
-  }
+  const response = await api.get(`/demandes/my/${userId}`)
+  return response.data
 }
 
 export async function fetchRequestById(id: number): Promise<RequestDTO> {
@@ -78,14 +70,8 @@ export async function fetchRequestById(id: number): Promise<RequestDTO> {
 }
 
 export async function createRequest(payload: RequestDTO): Promise<RequestDTO> {
-  try {
-    const response = await api.post('/demandes', payload)
-    return response.data
-  } catch (e) {
-    const newReq = { ...payload, id: Math.floor(Math.random() * 1000) + 200, status: 'PENDING' as RequestStatus, createdDate: new Date().toISOString() }
-    mockRequests.push(newReq)
-    return Promise.resolve(newReq)
-  }
+  const response = await api.post('/demandes', payload)
+  return response.data
 }
 
 export async function updateRequest(id: number, payload: RequestDTO): Promise<RequestDTO> {
@@ -165,4 +151,3 @@ export async function createAppointment(requestId: number, payload: Omit<Appoint
   mockAppointments.push(newApp)
   return Promise.resolve(newApp)
 }
-

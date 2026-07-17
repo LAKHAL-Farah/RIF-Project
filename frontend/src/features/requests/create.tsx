@@ -4,7 +4,9 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { createRequest } from '@/lib/api'
+import { useAuthStore } from '@/stores/authStore'
 import { useNavigate, useSearch } from '@tanstack/react-router'
+import { toast } from 'sonner'
 
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -40,6 +42,7 @@ type FormValues = {
 
 export default function CreateRequestPage() {
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.auth.user)
   const search = useSearch({ from: '/_authenticated/requests/new' }) as Partial<{
     service: string
     country: string
@@ -78,10 +81,22 @@ export default function CreateRequestPage() {
 
   const createMut = useMutation({
     mutationFn: createRequest,
-    onSuccess: () => navigate({ to: '/' }),
+    onSuccess: () => {
+      toast.success('Demande créée avec succès.')
+      navigate({ to: '/' })
+    },
+    onError: () => {
+      toast.error("La demande n'a pas pu être créée. Veuillez réessayer.")
+    },
   })
 
   const onSubmit = (values: FormValues) => {
+    if (!user?.accountNo) {
+      toast.error('Votre session a expiré. Veuillez vous reconnecter avant de créer une demande.')
+      navigate({ to: '/sign-in' })
+      return
+    }
+
     const dynamicPart = values.dynamic
       ? Object.entries(values.dynamic)
         .filter(([, v]) => v !== undefined && v !== '')
@@ -95,7 +110,12 @@ export default function CreateRequestPage() {
     const descriptionParts = [dynamicPart, docsPart].filter(Boolean)
     const description = descriptionParts.join(' | ')
 
-    createMut.mutate({ type: values.service, description, status: 'PENDING' } as any)
+    createMut.mutate({
+      type: values.service,
+      description,
+      status: 'PENDING',
+      userId: user.accountNo,
+    } as any)
   }
 
   const fileInputsRef = useRef<Record<string, HTMLInputElement | null>>({})
