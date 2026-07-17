@@ -19,3 +19,6 @@ eureka:
       defaultZone: http://${EUREKA_HOST:eureka-server}:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
+logging:
+  level:
+    org.springframework.security: DEBUG

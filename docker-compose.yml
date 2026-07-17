@@ -122,7 +122,13 @@ services:
       MONGO_HOST: mongodb
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/demande_db
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      SPRING_APPLICATION_JSON: '{"spring":{"data":{"mongodb":{"uri":"mongodb://mongodb:27017/demande_db"}}},"eureka":{"client":{"service-url":{"defaultZone":"http://eureka-server:8761/eureka/"}}}}'
+      SPRING_MONGODB_URI: mongodb://mongodb:27017/demande_db
+      SPRING_APPLICATION_JSON: '{"spring":{"mongodb":{"uri":"mongodb://mongodb:27017/demande_db"}},"eureka":{"client":{"service-url":{"defaultZone":"http://eureka-server:8761/eureka/"}}}}'
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: env,health
+      MANAGEMENT_ENDPOINT_ENV_ACCESS: unrestricted
+      MANAGEMENT_ENDPOINT_ENV_SHOW_VALUES: always
+
+
     depends_on:
       config-server:
         condition: service_healthy

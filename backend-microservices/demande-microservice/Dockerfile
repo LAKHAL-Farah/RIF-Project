@@ -19,4 +19,4 @@ EXPOSE 8082
 HEALTHCHECK --interval=10s --timeout=5s --start-period=40s --retries=5 \
   CMD nc -z localhost 8082 || exit 1
 
-ENTRYPOINT ["java", "-jar", "app.jar", "--spring.data.mongodb.uri=mongodb://mongodb:27017/demande_db", "--eureka.client.service-url.defaultZone=http://eureka-server:8761/eureka/"]
+ENTRYPOINT ["java", "-jar", "app.jar", "--spring.mongodb.uri=mongodb://mongodb:27017/demande_db", "--eureka.client.service-url.defaultZone=http://eureka-server:8761/eureka/"]
